@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DocGen AI — Technical Documentation Generator</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📘</text></svg>" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">DG</span>
+      <div>
+        <h1>DocGen AI</h1>
+        <p>Technical documentation from your source code</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span id="providerBadge" class="badge">offline</span>
+      <button class="btn ghost" id="historyBtn" title="History">History</button>
+      <button class="btn ghost" id="themeBtn" title="Toggle theme">Theme</button>
+      <button class="btn" id="settingsBtn">Settings</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel input-panel">
+      <div class="step"><span>1</span> Add your code</div>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="paste">Paste</button>
+        <button class="tab" data-tab="upload">Upload</button>
+        <button class="tab" data-tab="github">GitHub</button>
+      </div>
+
+      <div class="tab-body" id="tab-paste">
+        <div class="row">
+          <input id="pasteName" class="input" placeholder="File name, e.g. main.py" value="main.py" />
+          <button class="btn small" id="addPasteBtn">Add file</button>
+        </div>
+        <textarea id="pasteCode" class="code-input" spellcheck="false" placeholder="Paste source code here…"></textarea>
+        <button class="link" id="sampleBtn">Load a sample project</button>
+      </div>
+
+      <div class="tab-body hidden" id="tab-upload">
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" multiple hidden />
+          <strong>Drop files or a .zip here</strong>
+          <span>or click to browse — source files, folders zipped, up to 3&nbsp;MB total</span>
+        </label>
+      </div>
+
+      <div class="tab-body hidden" id="tab-github">
+        <div class="row">
+          <input id="githubUrl" class="input" placeholder="https://github.com/owner/repo" />
+          <button class="btn small" id="githubBtn">Import</button>
+        </div>
+        <p class="hint">Public repositories only. Use <code>/tree/branch/sub/folder</code> to import a subfolder.</p>
+      </div>
+
+      <div class="files-header">
+        <span id="fileCount">No files yet</span>
+        <button class="link danger" id="clearFilesBtn">Clear all</button>
+      </div>
+      <ul id="fileList" class="file-list"></ul>
+
+      <div class="step"><span>2</span> Choose documentation</div>
+      <div id="docTypes" class="doc-types"></div>
+
+      <div class="grid2">
+        <label>Project name<input id="projectName" class="input" placeholder="My Project" /></label>
+        <label>Output language<input id="outputLanguage" class="input" value="English" /></label>
+        <label>Audience
+          <select id="audience" class="input">
+            <option value="developers">Developers</option>
+            <option value="beginners">Beginners</option>
+            <option value="stakeholders">Non-technical stakeholders</option>
+          </select>
+        </label>
+        <label>Detail level
+          <select id="detail" class="input">
+            <option value="concise">Concise</option>
+            <option value="standard" selected>Standard</option>
+            <option value="comprehensive">Comprehensive</option>
+          </select>
+        </label>
+      </div>
+      <label class="full">Extra instructions <span class="muted">(optional)</span>
+        <textarea id="customInstructions" class="input" rows="2" placeholder="e.g. Include a FAQ section, use British spelling…"></textarea>
+      </label>
+
+      <button class="btn primary big" id="generateBtn">Generate documentation</button>
+    </section>
+
+    <section class="panel output-panel">
+      <div class="output-toolbar">
+        <div class="tabs">
+          <button class="tab active" data-view="preview">Preview</button>
+          <button class="tab" data-view="markdown">Markdown</button>
+        </div>
+        <div class="actions">
+          <span id="status" class="status"></span>
+          <button class="btn small ghost" id="copyBtn" disabled>Copy</button>
+          <button class="btn small ghost" id="downloadBtn" disabled>Download .md</button>
+          <button class="btn small ghost" id="htmlBtn" disabled>Export HTML</button>
+        </div>
+      </div>
+      <div id="emptyState" class="empty">
+        <div class="empty-art"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h7"/></svg></div>
+        <h2>Your documentation will appear here</h2>
+        <p>Add code, pick a document type and click <b>Generate</b>. Works offline via static analysis, or connect OpenAI, Claude or Gemini in Settings for AI-written docs.</p>
+      </div>
+      <article id="preview" class="markdown-body hidden"></article>
+      <textarea id="markdown" class="markdown-raw hidden" spellcheck="false"></textarea>
+    </section>
+  </main>
+
+  <dialog id="settingsDialog" class="dialog">
+    <form method="dialog" id="settingsForm">
+      <h2>AI provider settings</h2>
+      <label>Provider<select id="provider" class="input"></select></label>
+      <div id="llmFields">
+        <label>Model<input id="model" class="input" /></label>
+        <label>API key <span id="serverKeyNote" class="muted"></span>
+          <input id="apiKey" class="input" type="password" autocomplete="off" placeholder="sk-…" />
+        </label>
+        <label>Base URL <span class="muted">(OpenAI-compatible: Groq, OpenRouter, Ollama…)</span>
+          <input id="baseUrl" class="input" />
+        </label>
+        <label>Temperature <span id="tempVal" class="muted">0.3</span>
+          <input id="temperature" type="range" min="0" max="1" step="0.1" value="0.3" />
+        </label>
+      </div>
+      <p class="hint">Keys are stored only in this browser (localStorage) and sent to the server per request; they are never saved on the server.</p>
+      <div class="dialog-actions">
+        <button class="btn ghost" value="cancel">Cancel</button>
+        <button class="btn primary" id="saveSettings" value="save">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <aside id="historyDrawer" class="drawer">
+    <div class="drawer-head">
+      <h2>History</h2>
+      <div>
+        <button class="link danger" id="clearHistoryBtn">Clear</button>
+        <button class="btn small ghost" id="closeHistoryBtn">Close</button>
+      </div>
+    </div>
+    <ul id="historyList" class="history-list"></ul>
+  </aside>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
